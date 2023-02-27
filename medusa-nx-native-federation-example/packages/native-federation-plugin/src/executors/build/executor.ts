@@ -10,8 +10,7 @@ import {
   ExecutorContext,
   ProjectConfiguration,
 } from '@nrwl/devkit';
-import { NFPBuildExecutorOptions } from './schema';
-import { NFPWorkspacePaths } from './schema';
+import { NFPWorkspacePaths, NFPBuildExecutorOptions } from './schema';
 
 /**
  * Creates a builder name for a specific project
@@ -52,6 +51,7 @@ function normalizeWorkspacePaths(
     projectIndexHtml,
     projectAssets,
     projectFederationConfigPath: normalizePath(path.join(root, './federation.config.js')),
+    dev: true
   };
 }
 
@@ -125,10 +125,18 @@ export default async function runExecutor(
   options: NFPBuildExecutorOptions,
   context: ExecutorContext
 ): Promise<{ success: boolean }> {
-  const { root, projectName, projectGraph } = context;
-  const { outputPath, main, index, assets } = options;
+  const { target, root, projectName, projectGraph, configurationName } = context;
+  const { outputPath, main, index, assets, version } = options;
 
-  const workspace: NFPWorkspacePaths = normalizeWorkspacePaths(
+  if (version) {
+    console.info(`Nx Native Federation: ${projectName} version will be taken from dist/...`);
+    return { success: true };
+  }
+
+  const projectConfigurationOptions: NFPBuildExecutorOptions = target?.configurations[configurationName] 
+    || {};
+
+  let workspace: NFPWorkspacePaths = normalizeWorkspacePaths(
     root,
     main,
     index,
@@ -138,11 +146,13 @@ export default async function runExecutor(
     projectGraph
   );
 
-  console.log(`Nx Native Federation: Building...`);
+  workspace = {...workspace, ...projectConfigurationOptions};
+
+  console.info(`Nx Native Federation: Building...`);
 
   try {
-    const {stdout, stderr} = await compileCommonBuilderTsFile(workspace);
-    console.log(stdout, stderr);
+    const{stdout}=await compileCommonBuilderTsFile(workspace);
+    console.log(stdout);
   } catch (e) {
     throw new Error(e);
   }
@@ -150,13 +160,14 @@ export default async function runExecutor(
   createProjectBuilderTsFile(workspace);
 
   try {
-    const {stdout, stderr} = await compileAndRunProjectBuilderFiles(workspace);
-    console.log(stdout, stderr);
+    const{stdout}=await compileAndRunProjectBuilderFiles(workspace);
     removeProjectBuilderTsFile(workspace);
+    console.log(stdout);
+
   } catch (e) {
     throw new Error(e);
   }
 
-  console.log(`Nx Native Federation: Successfully built`);
+  console.info(`Nx Native Federation: Successfully built`);
   return { success: true };
 }

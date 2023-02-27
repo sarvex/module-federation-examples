@@ -6,7 +6,11 @@ import {
   parseTargetString, 
   readTargetOptions
 } from '@nrwl/devkit';
-import { NFPDashboardExecutorOptions, NFPDashboardToken } from './schema';
+import { 
+  NFPDashboardExecutorOptions, 
+  NFPDashboardOutputFile, 
+  NFPDashboardToken 
+} from './schema';
 import { readFileTokens, replaceWithTokens } from './token';
 import { buildDashboardFile, sendDashboardFile } from './dashboard';
 
@@ -30,7 +34,7 @@ export default async function runExecutor(
     filename,
     metadata, 
     tokenFile,
-    dashboardUrl,
+    writeUrl,
     environment, 
     versionStrategy 
   } = options;
@@ -45,14 +49,15 @@ export default async function runExecutor(
   let buildOptions;
 
   try {
-    //console.log(graph.nodes.remote);
     buildOptions = readTargetOptions(parseTargetString(buildTarget, graph), context);
   } catch (e) {
     throw new Error(`Invalid buildTarget: ${buildTarget}`);
   }
 
+  let dashboardFile: NFPDashboardOutputFile;
+
   try {
-    buildDashboardFile(graph, {
+    dashboardFile = await buildDashboardFile(graph, {
       buildTarget,
       name: projectName,
       rootPath: root,
@@ -75,10 +80,10 @@ export default async function runExecutor(
   }
 
   try {
-    const endpoint = replaceWithTokens(dashboardUrl, tokens);
-    await sendDashboardFile(endpoint);
+    const endpoint = replaceWithTokens(writeUrl, tokens);
+    await sendDashboardFile(endpoint, dashboardFile);
   } catch (e) {
-    throw new Error(e);
+    throw new Error(`Error occurred while sending Dashboard '${filename} file': ${e}`);
   }
 
   return { success: true };

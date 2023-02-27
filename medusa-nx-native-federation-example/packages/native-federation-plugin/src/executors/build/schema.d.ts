@@ -4,6 +4,8 @@ export interface NFPBuildExecutorOptions {
   index: string;
   main: string;
   assets: string[];
+  version?: boolean;
+  dev?: boolean;
 }
 
 //
@@ -19,4 +21,5 @@ export interface NFPWorkspacePaths {
   projectIndexHtml: string;
   projectAssets: string[];
   projectFederationConfigPath: string;
+  dev?: boolean;
 }
